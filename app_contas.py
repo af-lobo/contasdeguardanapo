@@ -251,6 +251,26 @@ def forecast_next_month(df: pd.DataFrame) -> pd.DataFrame:
     avg["forecast_next_month"] = avg["forecast_next_month"].abs().round(2)
     return avg.sort_values("forecast_next_month", ascending=False)
 
+st.subheader("📋 Categorias e descrições associadas")
+
+with st.expander("Ver tabela de categorias / descrições", expanded=False):
+    # Agrupar por categoria e descrição, contando nº de movimentos
+    cat_desc = (
+        final_df.groupby(["category", "description"])
+        .size()
+        .reset_index(name="num_movimentos")
+        .sort_values(["category", "num_movimentos"], ascending=[True, False])
+    )
+    st.dataframe(cat_desc, use_container_width=True)
+
+    st.markdown(
+        """
+Dica:  
+- Ordena pela coluna **category** para ver tudo o que está em *Outros / Por classificar*.  
+- Se mudares uma dessas linhas na tabela principal e carregares em **Guardar correcções**, 
+  na próxima vez que abrires a app essa descrição já virá com a categoria correcta.
+"""
+    )
 
 # ----------------- UI Streamlit ----------------- #
 
@@ -384,5 +404,6 @@ else:
         st.info("Ainda não há dados suficientes para previsão.")
 else:
     st.info("Carrega um ficheiro de extracto para começar.")
+
 
 
