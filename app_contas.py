@@ -1,24 +1,4 @@
-
-Esse último `else:` está ao mesmo nível do anterior, mas não tem `if` correspondente → `SyntaxError`.
-
-3. **A tabela de categorias (`final_df`) está antes da própria UI:**
-
-Estás a usar `final_df` logo depois da definição de `forecast_next_month`, **antes** de ele ser criado na UI.
-
----
-
-## 2. Código corrigido + `guess_merchant()` refinado
-
-Aqui vai o **`app_contas.py` completo**, já com:
-
-- estrutura corrigida
-- blocos todos bem indentados
-- `guess_merchant()` melhorado para juntar descrições parecidas
-- tabela de categorias no sítio certo
-
-Podes copiar/colar tudo isto para o ficheiro:
-
-```python
+python
 import json
 import re
 from pathlib import Path
@@ -479,3 +459,4 @@ na próxima vez que abrires a app essa descrição já virá com a categoria cor
 
 else:
  st.info("Carrega um ficheiro de extracto para começar.")
+
