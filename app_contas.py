@@ -293,35 +293,58 @@ if uploaded_file is not None:
     df = add_auto_categories(df, mapping)
 
     st.subheader("Movimentos com categorias (editável)")
-    st.markdown(
-        "Podes alterar a coluna **category**. "
-        "Quando estiveres satisfeito, carrega em **💾 Guardar correcções** para ensinar a aplicação."
+st.markdown(
+    """
+Podes alterar a coluna **category**.  
+Quando mudares a categoria de uma descrição que estava em *Outros / Por classificar*,
+essa escolha passa a ser aplicada a **todos os movimentos com a mesma descrição**
+(e também a futuros uploads).
+"""
+)
+
+edited_df = st.data_editor(
+    df,
+    num_rows="dynamic",
+    column_config={
+        "category": st.column_config.SelectboxColumn(
+            "category",
+            options=DEFAULT_CATEGORIES,
+        )
+    },
+    hide_index=True,
+)
+
+# Este será o DataFrame "final" usado nos resumos e previsões
+final_df = edited_df.copy()
+
+# 4. Aprendizagem a partir das correcções
+if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
+    new_mapping = mapping.copy()
+
+    # 4.1. Actualizar mapping com base nas linhas editadas
+    for _, row in edited_df.iterrows():
+        merchant_key = guess_merchant(row["description"])
+        cat = row["category"]
+        if cat and cat != "Outros / Por classificar":
+            new_mapping[merchant_key] = cat
+
+    save_mapping(new_mapping)
+    mapping = new_mapping
+
+    # 4.2. Reaplicar categorias a TODAS as linhas, com base no novo mapping
+    final_df["category"] = final_df.apply(
+        lambda r: auto_categorize_row(r["description"], r["amount"], mapping),
+        axis=1,
     )
 
-    edited_df = st.data_editor(
-        df,
-        num_rows="dynamic",
-        column_config={
-            "category": st.column_config.SelectboxColumn(
-                "category",
-                options=DEFAULT_CATEGORIES,
-            )
-        },
-        hide_index=True,
+    st.success(
+        "Correcções guardadas. Todas as linhas com a mesma descrição foram actualizadas "
+        "e o sistema aprendeu estes novos mapeamentos."
     )
+else:
+    # Se ainda não carregaste no botão, usamos as categorias tal como estão editadas
+    final_df["category"] = final_df["category"].fillna(final_df["suggested_category"])
 
-    # 4. Aprendizagem a partir das correcções
-    if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
-        new_mapping = mapping.copy()
-        for _, row in edited_df.iterrows():
-            merchant_key = guess_merchant(row["description"])
-            cat = row["category"]
-            if cat and cat != "Outros / Por classificar":
-                new_mapping[merchant_key] = cat
-
-        save_mapping(new_mapping)
-        mapping = new_mapping
-        st.success("Correcções guardadas. O sistema aprendeu novos mapeamentos.")
 
     # 5. Resumo mensal e gráficos
     st.subheader("📊 Resumo mensal por categoria (despesas)")
@@ -361,3 +384,4 @@ if uploaded_file is not None:
         st.info("Ainda não há dados suficientes para previsão.")
 else:
     st.info("Carrega um ficheiro de extracto para começar.")
+
