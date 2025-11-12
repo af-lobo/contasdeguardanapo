@@ -348,7 +348,7 @@ else:
 
     # 5. Resumo mensal e gráficos
     st.subheader("📊 Resumo mensal por categoria (despesas)")
-    summary = compute_monthly_summary(edited_df)
+    summary = compute_monthly_summary(final_df)
     if not summary.empty:
         tabela = (
             summary.pivot_table(
@@ -364,7 +364,7 @@ else:
 
         st.markdown("### Despesas totais por mês")
         monthly_totals = (
-            edited_df[edited_df["amount"] < 0]
+            final_df[final_df["amount"] < 0]
             .groupby("month")["amount"]
             .sum()
             .abs()
@@ -377,11 +377,12 @@ else:
 
     # 6. Previsão simples
     st.subheader("🔮 Previsão de despesas por categoria (média mensal histórica)")
-    forecast_df = forecast_next_month(edited_df)
+    forecast_df = forecast_next_month(final_df)
     if not forecast_df.empty:
         st.dataframe(forecast_df)
     else:
         st.info("Ainda não há dados suficientes para previsão.")
 else:
     st.info("Carrega um ficheiro de extracto para começar.")
+
 
