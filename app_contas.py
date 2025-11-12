@@ -1,4 +1,3 @@
-```python
 import json
 import re
 from pathlib import Path
@@ -459,5 +458,6 @@ na próxima vez que abrires a app essa descrição já virá com a categoria cor
 
 else:
  st.info("Carrega um ficheiro de extracto para começar.")
+
 
 
