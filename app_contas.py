@@ -569,6 +569,39 @@ else:
             st.error(f"Não foi possível carregar o histórico: {e}")
 
         if not history_df.empty:
+                    if not history_df.empty:
+            st.subheader("🎛️ Filtros do histórico")
+
+            col_h1, col_h2, col_h3 = st.columns(3)
+
+            anos_hist = sorted(history_df["year"].unique())
+            anos_sel_h = col_h1.multiselect(
+                "Ano",
+                options=anos_hist,
+                default=anos_hist,
+            )
+
+            meses_hist = sorted(history_df["month"].unique())
+            meses_sel_h = col_h2.multiselect(
+                "Mês",
+                options=meses_hist,
+                default=meses_hist,
+            )
+
+            cats_hist = sorted(history_df["category"].unique())
+            cats_sel_h = col_h3.multiselect(
+                "Categoria",
+                options=cats_hist,
+                default=cats_hist,
+            )
+
+            mask_hist = (
+                history_df["year"].isin(anos_sel_h)
+                & history_df["month"].isin(meses_sel_h)
+                & history_df["category"].isin(cats_sel_h)
+            )
+            hist_filtrado = history_df[mask_hist].copy()
+
             st.subheader("📚 Histórico consolidado (Google Sheets)")
             st.markdown("Pré-visualização dos últimos movimentos:")
             st.dataframe(history_df.sort_values("date", ascending=False).head(50))
@@ -593,4 +626,5 @@ else:
             st.info("Ainda não há histórico guardado. Carrega um extracto e usa o botão de guardar.")
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
