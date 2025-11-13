@@ -632,43 +632,9 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
                 st.error(f"Erro ao guardar no histórico: {e}")
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
-# =========================================================
-# 9. Gestão de categorias dinâmicas
-# =========================================================
-st.subheader("🗂️ Gestão de categorias")
-
-if history_enabled():
-
-    st.markdown("""
-    Aqui podes gerir:
-    - **categoria**: nível principal (ex.: Supermercado, Casa, Saúde)
-    - **subcategoria**: nível secundário opcional
-    - **descrição**: texto livre
-    - **ativo**: se FALSE, deixa de aparecer nos menus mas mantém o histórico existente.
-    """)
-
-    categories_df = load_categories_df()
-
-    edited_cats_df = st.data_editor(
-        categories_df,
-        num_rows="dynamic",
-        hide_index=True,
-    )
-
-    if st.button("💾 Guardar categorias", key="save_categorias"):
-        save_categories_df(edited_cats_df)
-        st.success("Categorias actualizadas. Faz refresh à página para aplicar.")
-
-else:
-    st.info(
-        "Gestão de categorias requer configuração do Google Sheets "
-        "(secção [gsheet] em secrets.toml)."
-    )
-
-
-# ------------------------------------------------------------------ #
-#  RAMO SEM FICHEIRO CARREGADO – CONSULTA DO HISTÓRICO
-# ------------------------------------------------------------------ #
+# ---------------------------------------------------------
+# RAMO SEM FICHEIRO CARREGADO – CONSULTA DO HISTÓRICO
+# ---------------------------------------------------------
 else:
     st.info(
         "Carrega um ficheiro de extracto para começar ou consulta o histórico consolidado (se existir)."
@@ -682,6 +648,7 @@ else:
             st.error(f"Não foi possível carregar o histórico: {e}")
 
         if not history_df.empty:
+            # Filtros do histórico
             st.subheader("🎛️ Filtros do histórico")
 
             col_h1, col_h2, col_h3 = st.columns(3)
@@ -716,7 +683,10 @@ else:
 
             st.subheader("📚 Histórico consolidado (Google Sheets)")
             st.markdown("Pré-visualização dos últimos movimentos filtrados:")
-            st.dataframe(hist_filtrado.sort_values("date", ascending=False).head(50))
+            st.dataframe(
+                hist_filtrado.sort_values("date", ascending=False).head(50),
+                use_container_width=True,
+            )
 
             st.subheader("📊 Resumo histórico por mês e categoria (despesas)")
             summary_hist = compute_monthly_summary(hist_filtrado)
@@ -742,8 +712,37 @@ else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
 
 
+# =========================================================
+# 9. Gestão de categorias dinâmicas (fora do if/else anterior)
+# =========================================================
+st.subheader("🗂️ Gestão de categorias")
 
+if history_enabled():
 
+    st.markdown(
+        """
+Aqui podes gerir:
 
+- **categoria**: nível principal (ex.: Supermercado, Casa, Saúde)  
+- **subcategoria**: nível secundário opcional  
+- **descrição**: texto livre  
+- **ativo**: se FALSE, deixa de aparecer nas opções mas mantém o histórico existente.
+"""
+    )
 
+    categories_df = load_categories_df()
 
+    edited_cats_df = st.data_editor(
+        categories_df,
+        num_rows="dynamic",
+        hide_index=True,
+    )
+
+    if st.button("💾 Guardar categorias", key="save_categorias"):
+        save_categories_df(edited_cats_df)
+        st.success("Categorias actualizadas. Faz refresh à página para aplicar.")
+else:
+    st.info(
+        "Gestão de categorias requer configuração do Google Sheets "
+        "(secção [gsheet] em secrets.toml)."
+    )
