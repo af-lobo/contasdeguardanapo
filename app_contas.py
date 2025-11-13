@@ -11,20 +11,20 @@ from google.oauth2.service_account import Credentials
 # ----------------- Autenticação simples (via secrets) ----------------- #
 
 def require_login():
-    """Pede login/password antes de mostrar a app (credenciais vêm de secrets)."""
+    """Login com vários utilizadores definidos no secrets.toml."""
 
-    # Ler credenciais do secrets
-    if "auth" not in st.secrets:
-        st.error("Faltam credenciais no secrets.toml (secção [auth]).")
+    if "auth" not in st.secrets or "users" not in st.secrets["auth"]:
+        st.error("Faltam utilizadores configurados no secrets.toml (secção [auth]).")
         st.stop()
 
-    SECRET_USER = st.secrets["auth"].get("username", "")
-    SECRET_PASS = st.secrets["auth"].get("password", "")
+    users_list = st.secrets["auth"]["users"]
+
+    # Convert to dict: {username: password}
+    valid_users = {u["username"]: u["password"] for u in users_list}
 
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
-    # Se já autenticado → mostra logout
     if st.session_state.logged_in:
         with st.sidebar:
             if st.button("🔒 Terminar sessão"):
@@ -32,7 +32,7 @@ def require_login():
                 st.rerun()
         return
 
-    # Se não autenticado → pedir login
+    # Formulário de login
     st.title("🔐 Contas de Guardanapo - Login")
 
     with st.form("login_form"):
@@ -40,16 +40,16 @@ def require_login():
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Entrar")
 
-    # Validar credenciais
     if submitted:
-        if username == SECRET_USER and password == SECRET_PASS:
+        if username in valid_users and password == valid_users[username]:
             st.session_state.logged_in = True
-            st.success("Sessão iniciada com sucesso.")
+            st.session_state.user = username  # opcional
+            st.success(f"Sessão iniciada com sucesso, {username}.")
             st.rerun()
         else:
-            st.error("Utilizador ou password incorrectos.")
+            st.error("Credenciais inválidas.")
 
-    st.stop()  # Bloqueia execução do resto
+    st.stop()
 
 # ----------------- Configuração base ----------------- #
 
@@ -667,6 +667,7 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
 
 
