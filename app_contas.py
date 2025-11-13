@@ -29,7 +29,7 @@ def require_login():
         with st.sidebar:
             if st.button("🔒 Terminar sessão"):
                 st.session_state.logged_in = False
-                st.experimental_rerun()
+                st.rerun()
         return
 
     # Se não autenticado → pedir login
@@ -45,7 +45,7 @@ def require_login():
         if username == SECRET_USER and password == SECRET_PASS:
             st.session_state.logged_in = True
             st.success("Sessão iniciada com sucesso.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Utilizador ou password incorrectos.")
 
@@ -667,5 +667,6 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
 
