@@ -382,8 +382,8 @@ def forecast_next_month(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ----------------- UI Streamlit ----------------- #
-
-st.title("🔍 Analizador de Contas Pessoais")
+require_login()
+st.title("🔍 Contas de Guardanapo")
 
 st.markdown(
     """
@@ -667,4 +667,5 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
