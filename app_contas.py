@@ -568,8 +568,8 @@ else:
             history_df = pd.DataFrame()
             st.error(f"Não foi possível carregar o histórico: {e}")
 
-        if not history_df.empty:
-                    if not history_df.empty:
+     
+    if not history_df.empty:
             st.subheader("🎛️ Filtros do histórico")
 
             col_h1, col_h2, col_h3 = st.columns(3)
@@ -626,5 +626,6 @@ else:
             st.info("Ainda não há histórico guardado. Carrega um extracto e usa o botão de guardar.")
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
 
