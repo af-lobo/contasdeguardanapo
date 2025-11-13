@@ -66,7 +66,7 @@ def guess_merchant(description: str) -> str:
     Extrai uma chave 'normalizada' para o fornecedor a partir da descrição:
     - converte para maiúsculas
     - remove números e pontuação
-    - remove palavras genéricas (COMPRA, PAGAMENTO, LISBOA, ONLINE, REF, etc.)
+    - remove palavras genéricas
     - usa as 2–3 primeiras palavras relevantes como chave
     """
     text = clean_text(description)
@@ -109,7 +109,6 @@ def guess_merchant(description: str) -> str:
     tokens = [t for t in text.split(" ") if t and t not in generic_tokens]
 
     if tokens:
-        # Usamos as 2 ou 3 primeiras palavras relevantes como chave
         key = " ".join(tokens[:3])
     else:
         key = text
@@ -406,56 +405,6 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 
     final_df = edited_df.copy()
 
-       # ======= FILTROS ======= #
-    st.subheader("🎛️ Filtros dos movimentos carregados")
-
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-
-    # Filtro por ano
-    anos_disponiveis = sorted(final_df["year"].unique())
-    anos_sel = col_f1.multiselect(
-        "Ano",
-        options=anos_disponiveis,
-        default=anos_disponiveis,
-    )
-
-    # Filtro por mês (AAAA-MM)
-    meses_disponiveis = sorted(final_df["month"].unique())
-    meses_sel = col_f2.multiselect(
-        "Mês",
-        options=meses_disponiveis,
-        default=meses_disponiveis,
-    )
-
-    # Filtro por categoria
-    categorias_disponiveis = sorted(final_df["category"].unique())
-    categorias_sel = col_f3.multiselect(
-        "Categoria",
-        options=categorias_disponiveis,
-        default=categorias_disponiveis,
-    )
-
-    # Filtro por intervalo de montantes
-    min_val = float(final_df["amount"].min())
-    max_val = float(final_df["amount"].max())
-    valor_min, valor_max = col_f4.slider(
-        "Montante (intervalo)",
-        min_value=min_val,
-        max_value=max_val,
-        value=(min_val, max_val),
-        step=0.01,
-    )
-
-    # Aplicar filtros
-    mask = (
-        final_df["year"].isin(anos_sel)
-        & final_df["month"].isin(meses_sel)
-        & final_df["category"].isin(categorias_sel)
-        & final_df["amount"].between(valor_min, valor_max)
-    )
-
-    df_filtrado = final_df[mask].copy()
-
     # 4. Aprendizagem a partir das correcções
     if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
         new_mapping = mapping.copy()
@@ -480,6 +429,51 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
         )
     else:
         final_df["category"] = final_df["category"].fillna(final_df["suggested_category"])
+
+    # 4.1 Filtros sobre os movimentos carregados
+    st.subheader("🎛️ Filtros dos movimentos carregados")
+
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+
+    anos_disponiveis = sorted(final_df["year"].unique())
+    anos_sel = col_f1.multiselect(
+        "Ano",
+        options=anos_disponiveis,
+        default=anos_disponiveis,
+    )
+
+    meses_disponiveis = sorted(final_df["month"].unique())
+    meses_sel = col_f2.multiselect(
+        "Mês",
+        options=meses_disponiveis,
+        default=meses_disponiveis,
+    )
+
+    categorias_disponiveis = sorted(final_df["category"].unique())
+    categorias_sel = col_f3.multiselect(
+        "Categoria",
+        options=categorias_disponiveis,
+        default=categorias_disponiveis,
+    )
+
+    min_val = float(final_df["amount"].min())
+    max_val = float(final_df["amount"].max())
+    valor_min, valor_max = col_f4.slider(
+        "Montante (intervalo)",
+        min_value=min_val,
+        max_value=max_val,
+        value=(min_val, max_val),
+        step=0.01,
+    )
+
+    mask = (
+        final_df["year"].isin(anos_sel)
+        & final_df["month"].isin(meses_sel)
+        & final_df["category"].isin(categorias_sel)
+        & final_df["amount"].between(valor_min, valor_max)
+    )
+
+    df_filtrado = final_df[mask].copy()
 
     # 5. Resumo mensal e gráficos
     st.subheader("📊 Resumo mensal por categoria (despesas)")
@@ -556,6 +550,9 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
 
+# ------------------------------------------------------------------ #
+#  RAMO SEM FICHEIRO CARREGADO – CONSULTA DO HISTÓRICO
+# ------------------------------------------------------------------ #
 else:
     st.info(
         "Carrega um ficheiro de extracto para começar ou consulta o histórico consolidado (se existir)."
@@ -568,8 +565,7 @@ else:
             history_df = pd.DataFrame()
             st.error(f"Não foi possível carregar o histórico: {e}")
 
-     
-            if not history_df.empty:
+        if not history_df.empty:
             st.subheader("🎛️ Filtros do histórico")
 
             col_h1, col_h2, col_h3 = st.columns(3)
@@ -603,11 +599,11 @@ else:
             hist_filtrado = history_df[mask_hist].copy()
 
             st.subheader("📚 Histórico consolidado (Google Sheets)")
-            st.markdown("Pré-visualização dos últimos movimentos:")
-            st.dataframe(history_df.sort_values("date", ascending=False).head(50))
+            st.markdown("Pré-visualização dos últimos movimentos filtrados:")
+            st.dataframe(hist_filtrado.sort_values("date", ascending=False).head(50))
 
             st.subheader("📊 Resumo histórico por mês e categoria (despesas)")
-            summary_hist = compute_monthly_summary(history_df)
+            summary_hist = compute_monthly_summary(hist_filtrado)
             if not summary_hist.empty:
                 tabela_hist = (
                     summary_hist.pivot_table(
@@ -623,10 +619,8 @@ else:
             else:
                 st.info("Ainda não existem despesas registadas no histórico.")
         else:
-            st.info("Ainda não há histórico guardado. Carrega um extracto e usa o botão de guardar.")
+            st.info(
+                "Ainda não há histórico guardado. Carrega um extracto e usa o botão de guardar."
+            )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
-
-
-
-
