@@ -543,13 +543,13 @@ else:
             "category": DEFAULT_CATEGORIES,
             "subcategory": ["" for _ in DEFAULT_CATEGORIES],
             "descricao": ["" for _ in DEFAULT_CATEGORIES],
-            "ativo": [True for _ in DEFAULT_CATEGORIES],
+            "active": [True for _ in DEFAULT_CATEGORIES],
         }
     )
 
 # Lista de categorias activas para usar nas opções
 category_options = sorted(
-    categories_df.loc[categories_df["ativo"], "category"].dropna().unique()
+    categories_df.loc[categories_df["active"], "category"].dropna().unique()
 )
 
 # Lista de subcategorias (opcional)
@@ -863,7 +863,7 @@ Aqui podes gerir:
 - **categoria**: nível principal (ex.: Supermercado, Casa, Saúde)  
 - **subcategoria**: nível secundário opcional  
 - **descrição**: texto livre  
-- **ativo**: se FALSE, deixa de aparecer nas opções mas mantém o histórico existente.
+- **active**: se FALSE, deixa de aparecer nas opções mas mantém o histórico existente.
 """
     )
 
@@ -883,6 +883,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
