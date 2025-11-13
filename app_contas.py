@@ -406,6 +406,56 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 
     final_df = edited_df.copy()
 
+       # ======= FILTROS ======= #
+    st.subheader("🎛️ Filtros dos movimentos carregados")
+
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+
+    # Filtro por ano
+    anos_disponiveis = sorted(final_df["year"].unique())
+    anos_sel = col_f1.multiselect(
+        "Ano",
+        options=anos_disponiveis,
+        default=anos_disponiveis,
+    )
+
+    # Filtro por mês (AAAA-MM)
+    meses_disponiveis = sorted(final_df["month"].unique())
+    meses_sel = col_f2.multiselect(
+        "Mês",
+        options=meses_disponiveis,
+        default=meses_disponiveis,
+    )
+
+    # Filtro por categoria
+    categorias_disponiveis = sorted(final_df["category"].unique())
+    categorias_sel = col_f3.multiselect(
+        "Categoria",
+        options=categorias_disponiveis,
+        default=categorias_disponiveis,
+    )
+
+    # Filtro por intervalo de montantes
+    min_val = float(final_df["amount"].min())
+    max_val = float(final_df["amount"].max())
+    valor_min, valor_max = col_f4.slider(
+        "Montante (intervalo)",
+        min_value=min_val,
+        max_value=max_val,
+        value=(min_val, max_val),
+        step=0.01,
+    )
+
+    # Aplicar filtros
+    mask = (
+        final_df["year"].isin(anos_sel)
+        & final_df["month"].isin(meses_sel)
+        & final_df["category"].isin(categorias_sel)
+        & final_df["amount"].between(valor_min, valor_max)
+    )
+
+    df_filtrado = final_df[mask].copy()
+
     # 4. Aprendizagem a partir das correcções
     if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
         new_mapping = mapping.copy()
@@ -433,7 +483,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 
     # 5. Resumo mensal e gráficos
     st.subheader("📊 Resumo mensal por categoria (despesas)")
-    summary = compute_monthly_summary(final_df)
+    summary = compute_monthly_summary(df_filtrado)
     if not summary.empty:
         tabela = (
             summary.pivot_table(
@@ -449,7 +499,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 
         st.markdown("### Despesas totais por mês")
         monthly_totals = (
-            final_df[final_df["amount"] < 0]
+            df_filtrado[df_filtrado["amount"] < 0]
             .groupby("month")["amount"]
             .sum()
             .abs()
@@ -462,7 +512,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 
     # 6. Previsão simples
     st.subheader("🔮 Previsão de despesas por categoria (média mensal histórica)")
-    forecast_df = forecast_next_month(final_df)
+    forecast_df = forecast_next_month(df_filtrado)
     if not forecast_df.empty:
         st.dataframe(forecast_df)
     else:
@@ -472,7 +522,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
     st.subheader("📋 Categorias e descrições associadas")
     with st.expander("Ver tabela de categorias / descrições", expanded=False):
         cat_desc = (
-            final_df.groupby(["category", "description"])
+            df_filtrado.groupby(["category", "description"])
             .size()
             .reset_index(name="num_movimentos")
             .sort_values(["category", "num_movimentos"], ascending=[True, False])
@@ -543,3 +593,4 @@ else:
             st.info("Ainda não há histórico guardado. Carrega um extracto e usa o botão de guardar.")
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
