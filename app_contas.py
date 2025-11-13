@@ -252,138 +252,108 @@ def load_history_df() -> pd.DataFrame:
 CATEGORIES_WORKSHEET_NAME = "categorias"
 
 
-def get_categories_worksheet(create_if_missing: bool = True):
+def get_categories_worksheet(create_if_missing: bool) -> gspread.Worksheet:
     """
-    Tenta obter a worksheet de categorias.
-    - Se não existir e create_if_missing=True, tenta criá-la.
-    - Se falhar, devolve None e a app continua com categorias por defeito.
+    Devolve a worksheet 'categorias'.
+    - Se existir, abre-a.
+    - Se não existir e create_if_missing=True, cria com cabeçalho normalizado.
+    - Se não existir e create_if_missing=False, lança WorksheetNotFound.
     """
-    try:
-        client = get_gspread_client()
-        spreadsheet_name = st.secrets["gsheet"]["spreadsheet_name"]
-        sh = client.open(spreadsheet_name)
-    except Exception as e:
-        st.warning(
-            "Não foi possível aceder ao Google Sheets para as categorias "
-            f"({e}). Vou usar apenas as categorias por defeito."
-        )
-        return None
+    client = get_gspread_client()
+    spreadsheet_name = st.secrets["gsheet"]["spreadsheet_name"]
+    sh = client.open(spreadsheet_name)
 
-    # Tentar obter a worksheet
+    # 1) tentar abrir
     try:
         return sh.worksheet(CATEGORIES_WORKSHEET_NAME)
-    except Exception:
-        # Não existe ou não foi possível obter
-        if not create_if_missing:
-            return None
+    except gspread.WorksheetNotFound:
+        pass  # prossegue para eventual criação
 
-        # Tentar criar automaticamente
-        try:
-            ws = sh.add_worksheet(
-                title=CATEGORIES_WORKSHEET_NAME,
-                rows=200,
-                cols=4,
-            )
-            ws.append_row(["category", "subcategory", "description", "active"])
-            for cat in DEFAULT_CATEGORIES:
-                ws.append_row([cat, "", "", "TRUE"])
-            return ws
-        except Exception as e:
-            st.warning(
-                "Não foi possível criar automaticamente a folha 'categorias' "
-                f"no Google Sheets ({e}). "
-                "Vou usar apenas as categorias por defeito. "
-                "Confirma o nome do separador (tem de ser exactamente 'categorias') "
-                "e as permissões da conta de serviço."
-            )
-            return None
+    # 2) se não queremos criar → deixar rebentar
+    if not create_if_missing:
+        raise gspread.WorksheetNotFound(
+            f"Worksheet '{CATEGORIES_WORKSHEET_NAME}' não existe"
+        )
 
-
-def _default_categories_df() -> pd.DataFrame:
-    """Cria um DataFrame de categorias a partir da lista DEFAULT_CATEGORIES."""
-    df = pd.DataFrame(
-        {
-            "category": DEFAULT_CATEGORIES,
-            "subcategory": ["" for _ in DEFAULT_CATEGORIES],
-            "description": ["" for _ in DEFAULT_CATEGORIES],
-            "active": [True for _ in DEFAULT_CATEGORIES],
-        }
+    # 3) criar nova com cabeçalho
+    ws = sh.add_worksheet(
+        title=CATEGORIES_WORKSHEET_NAME,
+        rows=200,
+        cols=4,
     )
-    return df
+    ws.append_row(["category", "subcategory", "description", "active"])
+    return ws
 
 
 def load_categories_df() -> pd.DataFrame:
     """
-    Lê categorias do Google Sheets.
-    Se não houver Sheet configurado, ou se falhar, devolve defaults.
+    Lê as categorias do Google Sheets.
+    Se não existir folha de categorias, usa defaults em memória.
     """
-    if not history_enabled():
-        return _default_categories_df()
-
-    ws = get_categories_worksheet(create_if_missing=False)
-    if ws is None:
-        return _default_categories_df()
-
+    # tenta abrir sem criar – se não existir, usamos defaults
     try:
-        rows = ws.get_all_records()
-    except Exception as e:
-        st.warning(
-            "Não foi possível ler a folha 'categorias' no Google Sheets "
-            f"({e}). Vou usar apenas as categorias por defeito."
+        ws = get_categories_worksheet(create_if_missing=False)
+    except gspread.WorksheetNotFound:
+        # fallback para categorias por defeito
+        df_default = pd.DataFrame(
+            [
+                {"category": "Casa", "subcategory": "", "description": "Despesas de casa", "active": True},
+                {"category": "Supermercado", "subcategory": "", "description": "Compras alimentação", "active": True},
+                {"category": "Restauração & Bares", "subcategory": "", "description": "Restaurantes / cafés", "active": True},
+                {"category": "Transportes & Combustível", "subcategory": "", "description": "Transportes, portagens, combustível", "active": True},
+                {"category": "Saúde", "subcategory": "", "description": "Farmácia, consultas, exames", "active": True},
+                {"category": "Seguros", "subcategory": "", "description": "Prémios de seguro", "active": True},
+                {"category": "Lazer & Entretenimento", "subcategory": "", "description": "Ginásio, Netflix, hobbies", "active": True},
+                {"category": "Rendimentos", "subcategory": "", "description": "Salário, outros rendimentos", "active": True},
+                {"category": "Outros / Por classificar", "subcategory": "", "description": "Despesa ainda sem categoria", "active": True},
+            ]
         )
-        return _default_categories_df()
+        return df_default
 
+    # se a folha existe, lê o conteúdo
+    rows = ws.get_all_records()
     if not rows:
-        return _default_categories_df()
+        # folha vazia → usar defaults
+        return load_categories_df.__wrapped__()  # truque para reaproveitar default, se quiseres
 
     df = pd.DataFrame(rows)
 
-    # Garantir colunas mínimas
+    # garantir colunas
     for col in ["category", "subcategory", "description", "active"]:
         if col not in df.columns:
             df[col] = "" if col != "active" else True
 
-    df["active"] = df["active"].astype(str).str.upper().isin(
-        ["TRUE", "1", "YES", "SIM"]
-    )
+    # normalizar active como booleano
+    df["active"] = df["active"].astype(bool)
 
     return df[["category", "subcategory", "description", "active"]]
 
 
-def save_categories_df(df: pd.DataFrame):
-    """Grava o DataFrame de categorias para o Google Sheets (se possível)."""
-    if not history_enabled():
-        return
-
-    ws = get_categories_worksheet(create_if_missing=True)
-    if ws is None:
-        # Já emitimos aviso em get_categories_worksheet
-        return
-
+def save_categories_df(df: pd.DataFrame) -> None:
+    """
+    Guarda o DataFrame de categorias na folha 'categorias'.
+    Evita o erro 'sheet already exists' garantindo que só cria se realmente não existir.
+    """
+    # tentar abrir sem criar
     try:
-        ws.clear()
+        ws = get_categories_worksheet(create_if_missing=False)
+    except gspread.WorksheetNotFound:
+        # se não existir, então sim, criar
+        ws = get_categories_worksheet(create_if_missing=True)
 
-        cols = ["category", "subcategory", "description", "active"]
-        for col in cols:
-            if col not in df.columns:
-                df[col] = "" if col != "active" else True
+    # limpar conteúdo e reescrever cabeçalho + linhas
+    ws.clear()
+    ws.append_row(["category", "subcategory", "description", "active"])
 
-        df_to_save = df[cols].copy()
-        df_to_save["active"] = df_to_save["active"].astype(bool).map(
-            lambda x: "TRUE" if x else "FALSE"
-        )
+    df_to_save = df.copy()
+    for col in ["category", "subcategory", "description", "active"]:
+        if col not in df_to_save.columns:
+            df_to_save[col] = "" if col != "active" else True
 
-        ws.append_row(cols)
-        if not df_to_save.empty:
-            ws.append_rows(df_to_save.astype(str).values.tolist())
-    except Exception as e:
-        st.warning(
-            "Não foi possível gravar as categorias no Google Sheets "
-            f"({e}). Verifica as permissões da conta de serviço."
-        )
+    df_to_save["active"] = df_to_save["active"].astype(bool)
 
-
-
+    rows = df_to_save[["category", "subcategory", "description", "active"]].fillna("").values.tolist()
+    ws.append_rows(rows)
 
 # ----------------- Leitura e normalização do extracto ----------------- #
 
@@ -883,6 +853,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
