@@ -8,6 +8,49 @@ import pandas as pd
 import streamlit as st
 from google.oauth2.service_account import Credentials
 
+# ----------------- Autenticação simples (via secrets) ----------------- #
+
+def require_login():
+    """Pede login/password antes de mostrar a app (credenciais vêm de secrets)."""
+
+    # Ler credenciais do secrets
+    if "auth" not in st.secrets:
+        st.error("Faltam credenciais no secrets.toml (secção [auth]).")
+        st.stop()
+
+    SECRET_USER = st.secrets["auth"].get("username", "")
+    SECRET_PASS = st.secrets["auth"].get("password", "")
+
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    # Se já autenticado → mostra logout
+    if st.session_state.logged_in:
+        with st.sidebar:
+            if st.button("🔒 Terminar sessão"):
+                st.session_state.logged_in = False
+                st.experimental_rerun()
+        return
+
+    # Se não autenticado → pedir login
+    st.title("🔐 Contas de Guardanapo - Login")
+
+    with st.form("login_form"):
+        username = st.text_input("Utilizador")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Entrar")
+
+    # Validar credenciais
+    if submitted:
+        if username == SECRET_USER and password == SECRET_PASS:
+            st.session_state.logged_in = True
+            st.success("Sessão iniciada com sucesso.")
+            st.experimental_rerun()
+        else:
+            st.error("Utilizador ou password incorrectos.")
+
+    st.stop()  # Bloqueia execução do resto
+
 # ----------------- Configuração base ----------------- #
 
 st.set_page_config(page_title="Analizador de Contas Pessoais", layout="wide")
@@ -624,3 +667,4 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
