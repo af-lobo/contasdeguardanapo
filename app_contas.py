@@ -632,38 +632,39 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
                 st.error(f"Erro ao guardar no histórico: {e}")
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
-# ----------------- Gestão de categorias ----------------- #
-
-st.subheader("🧩 Gestão de categorias")
+# =========================================================
+# 9. Gestão de categorias dinâmicas
+# =========================================================
+st.subheader("🗂️ Gestão de categorias")
 
 if history_enabled():
-    with st.expander("Ver / editar lista de categorias e subcategorias", expanded=False):
-        st.markdown(
-            """
-Cada linha representa uma categoria possível:
 
-- **category**: grupo principal (ex.: Supermercado, Restauração & Bares)  
-- **subcategory**: nível abaixo (ex.: Almoço trabalho, Jantar família) – opcional  
-- **descricao**: texto livre para notas  
-- **ativo**: se FALSE deixa de aparecer nas opções, mas mantém o histórico existente.
-"""
-        )
+    st.markdown("""
+    Aqui podes gerir:
+    - **categoria**: nível principal (ex.: Supermercado, Casa, Saúde)
+    - **subcategoria**: nível secundário opcional
+    - **descrição**: texto livre
+    - **ativo**: se FALSE, deixa de aparecer nos menus mas mantém o histórico existente.
+    """)
 
-        # Mostrar a tabela actual (veio do load_categories_df() no topo da UI)
-        edited_cats_df = st.data_editor(
-            categories_df,
-            num_rows="dynamic",
-            hide_index=True,
-        )
+    categories_df = load_categories_df()
 
-        if st.button("💾 Guardar categorias", key="save_categorias"):
-            save_categories_df(edited_cats_df)
-            st.success("Categorias actualizadas. Faz refresh à página para aplicar.")
+    edited_cats_df = st.data_editor(
+        categories_df,
+        num_rows="dynamic",
+        hide_index=True,
+    )
+
+    if st.button("💾 Guardar categorias", key="save_categorias"):
+        save_categories_df(edited_cats_df)
+        st.success("Categorias actualizadas. Faz refresh à página para aplicar.")
+
 else:
     st.info(
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 # ------------------------------------------------------------------ #
 #  RAMO SEM FICHEIRO CARREGADO – CONSULTA DO HISTÓRICO
@@ -739,6 +740,7 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
 
 
