@@ -256,15 +256,24 @@ def get_categories_worksheet(create_if_missing: bool = True):
     """
     Tenta obter a worksheet de categorias.
     - Se não existir e create_if_missing=True, tenta criá-la.
-    - Se falhar (APIError), devolve None e a app continua com categorias por defeito.
+    - Se falhar, devolve None e a app continua com categorias por defeito.
     """
-    client = get_gspread_client()
-    spreadsheet_name = st.secrets["gsheet"]["spreadsheet_name"]
-    sh = client.open(spreadsheet_name)
+    try:
+        client = get_gspread_client()
+        spreadsheet_name = st.secrets["gsheet"]["spreadsheet_name"]
+        sh = client.open(spreadsheet_name)
+    except Exception as e:
+        st.warning(
+            "Não foi possível aceder ao Google Sheets para as categorias "
+            f"({e}). Vou usar apenas as categorias por defeito."
+        )
+        return None
 
+    # Tentar obter a worksheet
     try:
         return sh.worksheet(CATEGORIES_WORKSHEET_NAME)
-    except WorksheetNotFound:
+    except Exception:
+        # Não existe ou não foi possível obter
         if not create_if_missing:
             return None
 
@@ -279,10 +288,10 @@ def get_categories_worksheet(create_if_missing: bool = True):
             for cat in DEFAULT_CATEGORIES:
                 ws.append_row([cat, "", "", "TRUE"])
             return ws
-        except APIError:
-            # Não conseguimos criar; deixamos o utilizador continuar com defaults
+        except Exception as e:
             st.warning(
-                "Não foi possível criar automaticamente a folha 'categorias' no Google Sheets. "
+                "Não foi possível criar automaticamente a folha 'categorias' "
+                f"no Google Sheets ({e}). "
                 "Vou usar apenas as categorias por defeito. "
                 "Confirma o nome do separador (tem de ser exactamente 'categorias') "
                 "e as permissões da conta de serviço."
@@ -317,10 +326,10 @@ def load_categories_df() -> pd.DataFrame:
 
     try:
         rows = ws.get_all_records()
-    except APIError:
+    except Exception as e:
         st.warning(
-            "Não foi possível ler a folha 'categorias' no Google Sheets. "
-            "Vou usar apenas as categorias por defeito."
+            "Não foi possível ler a folha 'categorias' no Google Sheets "
+            f"({e}). Vou usar apenas as categorias por defeito."
         )
         return _default_categories_df()
 
@@ -367,11 +376,12 @@ def save_categories_df(df: pd.DataFrame):
         ws.append_row(cols)
         if not df_to_save.empty:
             ws.append_rows(df_to_save.astype(str).values.tolist())
-    except APIError:
+    except Exception as e:
         st.warning(
-            "Não foi possível gravar as categorias no Google Sheets. "
-            "Verifica as permissões da conta de serviço."
+            "Não foi possível gravar as categorias no Google Sheets "
+            f"({e}). Verifica as permissões da conta de serviço."
         )
+
 
 
 
@@ -873,5 +883,6 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
