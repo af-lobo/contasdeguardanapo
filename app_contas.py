@@ -393,8 +393,41 @@ As tuas correcções vão sendo **aprendidas** para futuros meses.
 """
 )
 
+# 0. Mapping aprendido (merchant → categoria)
 mapping = load_mapping()
 
+# 0.1. Carregar categorias dinâmicas (ou fallback para DEFAULT_CATEGORIES)
+if history_enabled():
+    categories_df = load_categories_df()
+else:
+    # Fallback local se não houver Google Sheets configurado
+    categories_df = pd.DataFrame(
+        {
+            "category": DEFAULT_CATEGORIES,
+            "subcategory": ["" for _ in DEFAULT_CATEGORIES],
+            "descricao": ["" for _ in DEFAULT_CATEGORIES],
+            "ativo": [True for _ in DEFAULT_CATEGORIES],
+        }
+    )
+
+# Lista de categorias activas para usar nas opções
+category_options = sorted(
+    categories_df.loc[categories_df["ativo"], "category"].dropna().unique()
+)
+
+# Lista de subcategorias (opcional)
+if "subcategory" in categories_df.columns:
+    subcat_options = (
+        categories_df["subcategory"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+    subcat_options = sorted([s for s in subcat_options.unique() if s])
+else:
+    subcat_options = []
+
+# 1. Upload do ficheiro
 uploaded_file = st.file_uploader(
     "Carregar extracto bancário (.xls / .xlsx / .csv)",
     type=["xls", "xlsx", "csv"],
@@ -434,14 +467,20 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
 """
     )
 
+    # 3.2 Editor com categorias dinâmicas (e subcategoria opcional)
     edited_df = st.data_editor(
         df,
         num_rows="dynamic",
         column_config={
             "category": st.column_config.SelectboxColumn(
                 "category",
-                options=DEFAULT_CATEGORIES,
-            )
+                options=category_options,
+            ),
+            "subcategory": st.column_config.SelectboxColumn(
+                "subcategory",
+                options=subcat_options,
+                required=False,
+            ),
         },
         hide_index=True,
     )
@@ -461,6 +500,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
         save_mapping(new_mapping)
         mapping = new_mapping
 
+        # Reaplicar categorias a todas as linhas, se quiseres ser mais “estrito”
         final_df["category"] = final_df.apply(
             lambda r: auto_categorize_row(r["description"], r["amount"], mapping),
             axis=1,
@@ -667,6 +707,7 @@ else:
             )
     else:
         st.info("Histórico em Google Sheets não configurado (faltam secrets).")
+
 
 
 
