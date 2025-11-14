@@ -369,6 +369,54 @@ def save_categories_df(df: pd.DataFrame):
     if not df_to_save.empty:
         ws.append_rows(df_to_save.values.tolist())
 
+# ----------------- Regras de categorização (Google Sheets) ----------------- #
+
+RULES_WORKSHEET_NAME = "regras"
+
+
+def get_rules_worksheet(create_if_missing=True):
+    """Obtém a folha 'regras'. Cria se não existir."""
+    client = get_gspread_client()
+    spreadsheet_name = st.secrets["gsheet"]["spreadsheet_name"]
+    sh = client.open(spreadsheet_name)
+
+    try:
+        return sh.worksheet(RULES_WORKSHEET_NAME)
+    except gspread.WorksheetNotFound:
+        if not create_if_missing:
+            raise
+
+        ws = sh.add_worksheet(title=RULES_WORKSHEET_NAME, rows=500, cols=4)
+        ws.append_row(["merchant_key", "category", "subcategory", "raw_description"])
+        return ws
+
+
+def load_rules_df() -> pd.DataFrame:
+    """Lê as regras da folha 'regras'. Devolve um DF."""
+    try:
+        ws = get_rules_worksheet(create_if_missing=True)
+        rows = ws.get_all_records()
+    except Exception:
+        return pd.DataFrame(columns=["merchant_key", "category", "subcategory", "raw_description"])
+
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return pd.DataFrame(columns=["merchant_key", "category", "subcategory", "raw_description"])
+
+    df["subcategory"] = df["subcategory"].fillna("")
+    df["raw_description"] = df["raw_description"].fillna("")
+    return df
+
+
+def save_rules_df(df: pd.DataFrame):
+    """Grava regras no Google Sheets: limpa e escreve novamente."""
+    ws = get_rules_worksheet(create_if_missing=True)
+    ws.clear()
+    ws.append_row(["merchant_key", "category", "subcategory", "raw_description"])
+    if not df.empty:
+        ws.append_rows(df.values.tolist())
+
+
 # ----------------- Leitura e normalização do extracto ----------------- #
 
 
@@ -515,7 +563,16 @@ As tuas correcções vão sendo **aprendidas** para futuros meses.
 )
 
 # 0. Mapping aprendido (merchant → categoria)
-mapping = load_mapping()
+rules_df = load_rules_df()
+
+# transformar DF em dict para lookup rápido
+rules_map = {
+    row["merchant_key"]: {
+        "category": row["category"],
+        "subcategory": row["subcategory"]
+    }
+    for _, row in rules_df.iterrows()
+}
 
 # 0.1. Carregar categorias dinâmicas (ou fallback para DEFAULT_CATEGORIES)
 if history_enabled():
@@ -609,7 +666,30 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
     final_df = edited_df.copy()
 
     # 4. Aprendizagem a partir das correcções
-    if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
+   if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
+    new_rules = rules_df.copy()
+
+    for _, row in edited_df.iterrows():
+        merchant_key = guess_merchant(row["description"])
+        cat = row["category"]
+        sub = row.get("subcategory", "")
+
+        if cat and cat != "Outros / Por classificar":
+            # remover regra antiga, se existir
+            new_rules = new_rules[new_rules["merchant_key"] != merchant_key]
+
+            # adicionar nova regra
+            new_rules.loc[len(new_rules)] = [
+                merchant_key,
+                cat,
+                sub,
+                row["description"]
+            ]
+
+    save_rules_df(new_rules)
+    rules_df = new_rules.copy()
+
+    st.success("Regras actualizadas no Google Sheets!")
         new_mapping = mapping.copy()
 
         for _, row in edited_df.iterrows():
@@ -867,6 +947,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
