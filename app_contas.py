@@ -168,10 +168,11 @@ def auto_categorize_row(description: str, amount: float, mapping: dict) -> str:
     """
     desc_clean = clean_text(description)
 
-    # 1) Regras aprendidas (merchant_map.json)
-    for key, cat in mapping.items():
-        if key in desc_clean:
-            return cat
+    # 1) Regras aprendidas (Google Sheets - rules_map)
+merchant_key = desc_clean  # usamos a descrição já normalizada como chave
+
+if merchant_key in rules_map:
+    return rules_map[merchant_key]["category"]
 
     # 2) Regras simples
     if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA"]):
@@ -947,6 +948,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
