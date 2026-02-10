@@ -168,32 +168,37 @@ def auto_categorize_row(description: str, amount: float, mapping: dict) -> str:
     """
     desc_clean = clean_text(description)
 
-    # 1) Regras aprendidas (Google Sheets - rules_map)
-merchant_key = desc_clean  # usamos a descrição já normalizada como chave
-
+    # 1) Regras aprendidas (Google Sheets)
 if merchant_key in rules_map:
-    return rules_map[merchant_key]["category"]
+    rule = rules_map[merchant_key]
+    return rule["category"], rule.get("subcategory", "")
+# 2) Regras simples
+if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA"]):
+    return "Supermercado", ""
 
-    # 2) Regras simples
-    if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA"]):
-        return "Supermercado"
-    if any(x in desc_clean for x in ["UBER", "BOLT", "CABIFY", "CP ", "METRO", "CARRIS", "VIA VERDE"]):
-        return "Transportes & Combustível"
-    if any(x in desc_clean for x in ["GALP", "BP ", "REPSOL", "CEPSA"]):
-        return "Transportes & Combustível"
-    if any(x in desc_clean for x in ["NETFLIX", "SPOTIFY", "DISNEY", "HBO", "YOUTUBE PREMIUM"]):
-        return "Subscrições & Apps"
-    if any(x in desc_clean for x in ["EDP", "ENDESA", "GÁS", "ELETRICIDADE", "ÁGUA", "EPAL"]):
-        return "Casa"
-    if any(x in desc_clean for x in ["SEGURO", "TRIGÉSIMA", "PREMIO SEGURO"]):
-        return "Seguros"
-    if any(x in desc_clean for x in ["GINÁSIO", "FITNESS", "GYM"]):
-        return "Lazer & Entretenimento"
+if any(x in desc_clean for x in ["UBER", "BOLT", "CABIFY", "CP", "METRO", "CARRIS", "VIA VERDE"]):
+    return "Transportes & Combustível", ""
 
-    if amount > 0:
-        return "Rendimentos"
+if any(x in desc_clean for x in ["GALP", "BP", "REPSOL", "CEPSA"]):
+    return "Transportes & Combustível", ""
 
-    return "Outros / Por classificar"
+if any(x in desc_clean for x in ["NETFLIX", "SPOTIFY", "DISNEY", "HBO", "YOUTUBE PREMIUM"]):
+    return "Subscrições & Apps", ""
+
+if any(x in desc_clean for x in ["EDP", "ENDESA", "GÁS", "ELETRICIDADE", "ÁGUA", "EPAL"]):
+    return "Casa", ""
+
+if any(x in desc_clean for x in ["SEGURO", "TRIGÉSIMA", "PRÉMIO SEGURO"]):
+    return "Seguros", ""
+
+if any(x in desc_clean for x in ["GINÁSIO", "FITNESS", "GYM"]):
+    return "Lazer & Entretenimento", ""
+
+if amount > 0:
+    return "Rendimentos", ""
+
+return "Outros / Por classificar", ""
+
 
 
 # ----------------- Google Sheets (histórico) ----------------- #
