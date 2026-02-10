@@ -667,7 +667,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
     final_df = edited_df.copy()
 
 # 4. Aprendizagem a partir das correcções
-   if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
+    if st.button("💾 Guardar correcções e actualizar 'inteligência'"):
     new_rules = rules_df.copy()
 
     for _, row in edited_df.iterrows():
@@ -948,6 +948,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
