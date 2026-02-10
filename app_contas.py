@@ -691,7 +691,7 @@ essa escolha passa a ser aplicada a **todos os movimentos com a mesma descriçã
     rules_df = new_rules.copy()
 
     st.success("Regras actualizadas no Google Sheets!")
-        new_mapping = mapping.copy()
+            new_mapping = mapping.copy()
 
         for _, row in edited_df.iterrows():
             merchant_key = guess_merchant(row["description"])
@@ -948,6 +948,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
