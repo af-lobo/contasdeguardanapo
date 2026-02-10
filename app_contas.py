@@ -144,7 +144,8 @@ def get_history_worksheet():
 
 def build_tx_id(row: pd.Series) -> str:
     merchant_key = guess_merchant(row["description"])
-    key = f"{row['date'].date()}|{row['amount']}|{merchant_key}"
+    desc = str(row["description"]).strip().upper()
+    key = f"{row['date'].date()}|{row['amount']}|{merchant_key}|{desc}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 def load_history_df() -> pd.DataFrame:
@@ -765,4 +766,5 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
