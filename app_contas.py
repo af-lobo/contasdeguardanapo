@@ -356,22 +356,49 @@ def add_auto_categories(df: pd.DataFrame, rules_map: dict) -> pd.DataFrame:
 # ----------------- Leitura e normalização do extracto ----------------- #
 
 def load_statement(uploaded_file) -> pd.DataFrame:
+    """
+    Lê extractos em:
+      - .csv (separador ;)
+      - .xlsx (Excel moderno – recomendado)
+
+    NOTA:
+    Ficheiros .xls (Excel antigo) não são suportados.
+    """
     name = uploaded_file.name.lower()
+
+    # CSV
     if name.endswith(".csv"):
         return pd.read_csv(uploaded_file, sep=";", encoding="utf-8", engine="python")
 
-    df0 = pd.read_excel(uploaded_file, header=None)
-    col0 = df0.iloc[:, 0].astype(str).str.strip().str.upper()
-    mask = col0.eq("DATA OPERAÇÃO")
+    # Excel moderno
+    if name.endswith(".xlsx"):
+        df0 = pd.read_excel(uploaded_file, engine="openpyxl", header=None)
 
-    if mask.any():
-        header_idx = mask[mask].index[0]
-        header = df0.loc[header_idx]
-        df = df0.loc[header_idx + 1 :].copy()
-        df.columns = header
-        return df.reset_index(drop=True)
+        # Tentar detectar o formato Santander
+        col0 = df0.iloc[:, 0].astype(str).str.strip().str.upper()
+        mask = col0.eq("DATA OPERAÇÃO")
 
-    return pd.read_excel(uploaded_file)
+        if mask.any():
+            header_idx = mask[mask].index[0]
+            header = df0.loc[header_idx]
+            df = df0.loc[header_idx + 1 :].copy()
+            df.columns = header
+            return df.reset_index(drop=True)
+
+        # fallback: assume que já vem com cabeçalho
+        return pd.read_excel(uploaded_file, engine="openpyxl")
+
+    # Excel antigo (bloqueado)
+    if name.endswith(".xls"):
+        st.error(
+            "Ficheiros .xls (Excel antigo) não são suportados.\n\n"
+            "Abre o ficheiro no Excel e guarda como **.xlsx**."
+        )
+        st.stop()
+
+    st.error("Formato de ficheiro não suportado.")
+    st.stop()
+
 
 def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     col_map_possiveis = {
@@ -738,3 +765,4 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
