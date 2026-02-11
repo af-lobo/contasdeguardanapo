@@ -322,7 +322,7 @@ def auto_categorize_row(
         return rule["category"], rule.get("subcategory", "")
 
     # 2) Regras simples (fallback)
-    if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA"]):
+    if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA", "Auchan"]):
         return "Supermercado", ""
 
     if any(x in desc_clean for x in ["UBER", "BOLT", "CABIFY", "CP", "METRO", "CARRIS", "VIA VERDE"]):
@@ -762,6 +762,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
