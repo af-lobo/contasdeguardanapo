@@ -336,14 +336,19 @@ def auto_categorize_row(
 
 def add_auto_categories(df: pd.DataFrame, rules_map: dict) -> pd.DataFrame:
     df = df.copy()
+    cats = df.apply(
+        lambda r: auto_categorize_row(
+            r["description"],
+            r["amount"],
+            rules_map,
+        ),
+        axis=1,
+    )
 
-    cats = df.apply(lambda r: auto_categorize_row(r["description"], r["amount"], rules_map), axis=1)
-    df["suggested_category"] = [c[0] for c in cats]
-    df["suggested_subcategory"] = [c[1] for c in cats]
-
-    df["category"] = df["suggested_category"]
-    df["subcategory"] = df["suggested_subcategory"]
+    df["category"] = cats.apply(lambda x: x[0])
+    df["subcategory"] = cats.apply(lambda x: x[1])
     return df
+
 
 # ----------------- Leitura e normalização do extracto ----------------- #
 
@@ -757,6 +762,7 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
 
