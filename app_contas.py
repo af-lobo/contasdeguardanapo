@@ -305,43 +305,34 @@ def build_rules_map(rules_df: pd.DataFrame) -> dict:
 
 # ----------------- Categorização ----------------- #
 
-def auto_categorize_row(description: str, amount: float, rules_map: dict) -> tuple[str, str]:
+def auto_categorize_row(
+    description: str,
+    amount: float,
+    rules_map: dict,
+) -> tuple[str, str]:
     """
     Devolve (category, subcategory)
-    1) regras aprendidas (sheet 'regras')
-    2) heurísticas simples
-    3) fallback por sinal do valor
     """
     desc_clean = clean_text(description)
     merchant_key = guess_merchant(description)
 
-    # 1) Regras aprendidas
+    # 1) Regras aprendidas (Google Sheets)
     if merchant_key in rules_map:
         rule = rules_map[merchant_key]
-        cat = rule.get("category", "").strip() or "Outros / Por classificar"
-        sub = rule.get("subcategory", "").strip()
-        return cat, sub
+        return rule["category"], rule.get("subcategory", "")
 
-    # 2) Heurísticas simples (sem subcategoria)
+    # 2) Regras simples (fallback)
     if any(x in desc_clean for x in ["PINGO DOCE", "CONTINENTE", "LIDL", "ALDI", "MERCADONA"]):
         return "Supermercado", ""
-    if any(x in desc_clean for x in ["UBER", "BOLT", "CABIFY", " CP", "METRO", "CARRIS", "VIA VERDE"]):
-        return "Transportes & Combustível", ""
-    if any(x in desc_clean for x in ["GALP", " BP", "REPSOL", "CEPSA"]):
-        return "Transportes & Combustível", ""
-    if any(x in desc_clean for x in ["NETFLIX", "SPOTIFY", "DISNEY", "HBO", "YOUTUBE PREMIUM"]):
-        return "Subscrições & Apps", ""
-    if any(x in desc_clean for x in ["EDP", "ENDESA", "GÁS", "ELETRICIDADE", "ÁGUA", "EPAL"]):
-        return "Casa", ""
-    if any(x in desc_clean for x in ["SEGURO", "TRIGÉSIMA", "PRÉMIO SEGURO", "PREMIO SEGURO"]):
-        return "Seguros", ""
-    if any(x in desc_clean for x in ["GINÁSIO", "FITNESS", "GYM"]):
-        return "Lazer & Entretenimento", ""
 
-    # 3) Fallback
+    if any(x in desc_clean for x in ["UBER", "BOLT", "CABIFY", "CP", "METRO", "CARRIS", "VIA VERDE"]):
+        return "Transportes & Combustível", ""
+
     if amount > 0:
         return "Rendimentos", ""
+
     return "Outros / Por classificar", ""
+
 
 def add_auto_categories(df: pd.DataFrame, rules_map: dict) -> pd.DataFrame:
     df = df.copy()
@@ -766,5 +757,6 @@ else:
         "Gestão de categorias requer configuração do Google Sheets "
         "(secção [gsheet] em secrets.toml)."
     )
+
 
 
